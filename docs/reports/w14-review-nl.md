@@ -1,0 +1,57 @@
+# W14 — Review of `internal/nl` (F10 natural-language interface)
+
+Reviewed against `docs/architecture/features/F10-natural-language.md` (rev 2) and
+`docs/architecture/06-decision-register.md` DR-35 (§35.1–§35.5). Source report:
+`docs/reports/w13-nl.md`.
+
+## Verdict: **APPROVE-WITH-FIXES**
+
+One Blocker found and fixed in this pass (capability-gate fail-open). Two
+pre-existing, self-disclosed Major gaps remain open (spec-compliance / UX
+accuracy, not tenant-isolation or auth bypasses) — flagged as follow-up work
+rather than fixed here, for reasons given per finding.
+
+## Findings table
+
+| # | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| 1 | **Blocker** | RBAC gating (FR-F10-6/7) | `answerStartInvestigation`/`answerRemediate` skipped the `AuthZ.Can(...)` capability check entirely when `RulesAnswerer.AuthZ == nil` (`if a.AuthZ != nil { check }` — no `else`), then proceeded straight to `rca.Engine.Investigate` / `RemediateProposer.Propose`. Neither of those two downstream calls performs its own independent RBAC capability check (confirmed: `rca.Engine.Investigate` has no subject param at all; `remediate.Guard.Propose`'s `Authz` field is used only for `SeparationOfDuty` at *Approve* time, never at Propose). **`nl`'s own check is the sole enforcement point for `incident:investigate` / `remediation_action:propose`**, so an unwired `AuthZ` (a plausible wiring omission, e.g. a lean/dev config) silently turned "start an investigation" / "propose a remediation" into an unauthenticated capability for *any* subject reaching either entry point. | **FIXED** — both methods in `internal/nl/answerer.go` now treat `AuthZ == nil` as an explicit refusal (fail-closed), matching the fail-closed convention already used elsewhere in the file (e.g. `a.Registry == nil` → refuse rather than proceed). Added regression tests `TestAnswer_RemediateNilAuthZFailsClosed` / `TestAnswer_StartInvestigationNilAuthZFailsClosed` (`internal/nl/answerer_test.go`), each with a fake `Propose`/`Investigate` that records whether it was ever called — both now assert it is **not** called. |
+| 2 | — | `nl.Answerer`/`AnswerForSubject` split (the workaround) | **Verdict: sound, with a caveat.** `nl.go`'s `Answerer` interface (no `auth.Subject` param, matches `api.go`) is satisfied by `RulesAnswerer.Answer`, which delegates to `AnswerForSubject` with a hardcoded zero-privilege `Subject{Tenant: tid}` — so the two capability-gated intents always refuse through that path (now unconditionally, after fix #1). **Reachability check**: `internal/api/api.go` currently only *declares* a `Answerer nl.Answerer` struct field (line 129) with no handler code calling `.Answer(...)` or `.AnswerForSubject(...)` anywhere in the repo yet — grepped `internal/api`, `cmd/traceiq`; zero call sites. So the ungated interface method is not reachable from any real code path today; it is inert. The residual risk is forward-looking, not a live bypass: because the interface only exposes `Answer()`, a future handler author who type-checks against `nl.Answerer` (rather than reading `w13-nl.md`'s gap note) will naturally call the always-refusing `Answer()` and never discover `AnswerForSubject` exists — a *functional* regression (legitimate users always get "you don't have permission"), not a *security* one. | Not fixed (correctly scoped as `internal/api` wiring work, out of `nl`'s edit boundary per `doc.go`). Recommend `internal/api`'s eventual `/v1/ask` handler wire `AnswerForSubject` directly, and that a comment/doc note make this unmissable — already partially done via the doc-comment in `answerer.go:84-89`. |
+| 3 | — | `RemediateProposer` seam (DR-2 consumer-declared backend) | **Verdict: sound.** `internal/remediate` is not imported anywhere in `internal/nl` (grepped `traceiq/internal/remediate` across `internal/nl/*.go` — zero hits, consistent with `doc.go`'s allowed-import list). `RemediateProposer` exposes `Propose` only; there is no `Execute` method on the interface `nl` holds, so regardless of what concrete type (`remediate.Guard`) satisfies it at the wiring layer, `nl` code has no way to reach `Execute` — Go's static interface typing makes this structurally unbypassable from within `nl`. | No issue. |
+| 4 | — | Tenant isolation (FR-F10-10, DR-5) | **Verdict: confirmed, not superficial.** `AnswerForSubject`, `answerViaRegistry`, and `answerCompareWindows` all set `args.TenantID = tid` (the server-resolved parameter) immediately before every `Registry.Dispatch` call, unconditionally overwriting whatever `in.Args.TenantID` carried. `TestAnswer_TenantIsolation` exercises this with a deliberately mismatched `Args.TenantID = attacker` and a `fakeRegistry` keyed per-tenant with distinct byte payloads, then asserts (a) `Dispatch` was invoked with exactly `[victim]` and (b) no `Evidence.PayloadJSON` equals the attacker-tenant bytes. This is a real assertion on real cross-tenant byte separation, not a tautology. Read through: no code path constructs `Evidence` from anything other than the `Dispatch` call's own return value. | No issue found; I could not construct a bypass. |
+| 5 | Major (open) | Time-grammar correctness (FR-F10-3) | FR-F10-3 requires unmatched/unresolvable time phrases to become `IntentUnknown` with a clarifying question, "never a silently wrong window." In practice, `extractToolArgs` (`rules.go`) only ever checks `extractTimeRange`'s boolean success and, on failure, *silently* defaults to a trailing 30-minute window — it never distinguishes "no time phrase present at all" (fine to default) from "user wrote a time phrase our closed grammar can't parse" (should ask a clarifying question). Concretely: `"what changed since the checkout-svc deploy"` — `sinceRe` matches `since\s+(\S+)` against the literal token `"the"`, fails `time.Parse(RFC3339, "the")`, and the whole call falls through to `ok=false` → answer silently uses a bogus trailing-30-min window while still confidently classifying as `IntentCompareWindows` and rendering an answer. **This exact case is asserted as a passing example in `TestIntentClassification_AllTenIntents`** (`rules_test.go:81`), so intent classification is "working as designed," but the window-silently-wrong behavior it hides is a real FR-F10-3 violation, and `w13-nl.md` gap #4 already discloses it. | Not fixed here: correcting it either (a) flips the existing golden-table CompareWindows test to `IntentUnknown` — a behavior change needing a product decision on desired UX, or (b) requires wiring `anomaly.DeployIndex` deploy-marker resolution, a feature addition beyond a review-fix pass. Flagged as a follow-up task (see below). |
+| 6 | Major (open) | Fuzzy service-name match false-positive risk (FR-F10-2) | `matchService` (`entities.go`) picks the single lowest-Levenshtein-distance catalog entry and returns it with no ambiguity/confidence signal. Two failure modes: (a) on a tie (`d == bestDist`), the *first* catalog entry encountered silently wins — deterministic given catalog order, but arbitrary from the user's perspective; (b) even a clean, non-tied distance-2 match (e.g. "chekot-svc" → "checkout-svc") is surfaced with no "did you mean" caveat. This contradicts F10 §5's own documented mitigation for this exact failure mode ("`Answer` includes the matched service name inline with a `did you mean payment-svc?` caveat rather than silently assuming intent") — grepped the whole package for `did you mean`/similar and found no implementation. The evidence returned is real (genuinely from whichever service matched — not fabricated), so this is a false-*confidence* risk rather than a fabricated-citation risk, but a user asking about one service could be answered about a different, wrong one with no signal that a fuzzy guess occurred. | Not fixed here: needs a new field to carry match-confidence from `matchService` through `Intent`/`Answer` into rendered text — a moderate, cross-cutting change better scoped as its own task. Flagged as a follow-up task (see below). |
+| 7 | Minor | Time-grammar edge case | `"between yesterday and today"` doesn't satisfy `betweenRe` (which requires two `\S+` tokens parseable as RFC3339), but the standalone `yesterdayRe` still matches *within* that string and silently returns just yesterday's 24h window — answering a materially narrower question than asked. Not a hard spec violation (the closed grammar only commits to ISO-8601 pairs for `between`), but worth a code comment and a test case so the behavior is intentional rather than incidental. | Not fixed (cosmetic/edge case, no evidence-safety impact). |
+| 8 | Minor | Test quality | Tests are substantive overall: real byte-level evidence assertions (`TestAnswer_CitationsAreReal`), real dispatched-tenant tracking (`TestAnswer_TenantIsolation`), real typed-field assertions (`TestEntityExtraction_PopulatesTypedToolArgs`) rather than "does it return not-nil." One soft spot: `TestFollowUpArgsMergeFromFocus` calls `t.Skipf` if the phrasing doesn't classify as `IntentServiceHealth`, so a regression in classification *and* the merge logic together would silently skip rather than fail — low impact since classification is independently covered by `TestIntentClassification_AllTenIntents`. | Not fixed (low severity, noted for awareness). |
+| 9 | Info | Graceful degradation | Verified directly (not just via the existing test): empty string, gibberish tokens, and out-of-domain phrases ("what's the weather like") all correctly fall through `RulesInterpreter.Interpret`'s `len(best) == 0` branch with `IntentUnknown` and no panic — traced the regex/map logic by hand in addition to running `TestIntentClassification_UnrecognizedFallsBackGracefully`. Ambiguity-threshold logic (`TestIntentClassification_AmbiguousReturnsUnknownWithCandidates`) exercises a genuine near-tie, not a contrived always-true case. | Confirmed sound. |
+| 10 | Info | AC-F10-9 (≥85% accuracy gate) | Correctly disclosed as not automated this wave (no F11 scenario corpus in-repo yet); 40-case golden table is an honest, labeled substitute, not a claim of gate satisfaction. | No action needed this wave. |
+
+## Verification
+
+```
+GOTOOLCHAIN=go1.27.1 CGO_ENABLED=0 go build ./internal/nl/...   -> clean
+GOTOOLCHAIN=go1.27.1 CGO_ENABLED=0 go vet   ./internal/nl/...   -> clean
+GOTOOLCHAIN=go1.27.1 CGO_ENABLED=0 go test  ./internal/nl/... -v
+  -> 21 top-level tests (19 original + 2 new regression tests), all PASS, 0 FAIL
+
+GOTOOLCHAIN=go1.27.1 CGO_ENABLED=0 go build ./...   -> clean, full repo
+GOTOOLCHAIN=go1.27.1 CGO_ENABLED=0 go vet   ./...   -> clean, full repo
+GOTOOLCHAIN=go1.27.1 CGO_ENABLED=0 go test  ./...   -> all packages PASS,
+  including internal/archtest's TestPackageAdjacency, which w13-nl.md flagged
+  as a pre-existing unrelated failure — it now passes cleanly (26 packages
+  scoped, 115 non-test files), so that concern is stale/resolved.
+```
+
+## Files changed in this review pass
+
+- `internal/nl/answerer.go` — `answerStartInvestigation` and `answerRemediate`
+  now fail closed (refuse) when `AuthZ == nil`, instead of silently skipping
+  the capability check.
+- `internal/nl/answerer_test.go` — added `TestAnswer_RemediateNilAuthZFailsClosed`,
+  `TestAnswer_StartInvestigationNilAuthZFailsClosed`, and the supporting
+  `fakeEngine` (`rca.Engine` test double).
+
+## Follow-up work (not in scope for this review pass)
+
+Two Major, pre-existing, self-disclosed gaps are better scoped as their own
+tasks rather than folded into a review-fix pass — flagged separately.

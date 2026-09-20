@@ -1,0 +1,22 @@
+id: S01-error-signature-after-deploy
+title: New error signature appears shortly after a deploy
+description: >
+  Synthetic fixture for the error-signature-new-after-deploy rule
+  (internal/rca/rules): checkout's error signature es-checkout-500 is first
+  seen 5 minutes after a deploy on checkout, inside the rule's 30-minute
+  post-deploy window.
+tenant: eval-tenant
+fixture:
+  path: ../fixtures/deploy_regression.json
+clock:
+  start: 2026-01-01T11:55:00Z
+  fault_at: 2026-01-01T12:05:00Z
+  end: 2026-01-01T12:35:00Z
+expect:
+  incident_within: 5m
+  epicenter_service: checkout
+  root_cause_category: deploy_regression
+  root_cause_component: checkout
+  expected_evidence: []
+  max_cost_micro_usd: 500000
+  must_not_page: false

@@ -1,0 +1,10 @@
+[
+  {
+    "service": "checkout",
+    "operation": "POST /pay",
+    "child_service": "payments",
+    "self_millis": 8,
+    "child_millis": 192,
+    "total_millis": 200
+  }
+]

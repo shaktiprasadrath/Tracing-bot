@@ -1,0 +1,421 @@
+<title>TraceIQ PRD</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    --bg: #F6F8FA;
+    --surface: #FFFFFF;
+    --surface-2: #EDF1F5;
+    --ink: #1A222C;
+    --muted: #5C6B7A;
+    --line: #D8DFE6;
+    --accent: #0B7285;
+    --accent-soft: #E1F0F3;
+    --gap: #B45309;
+    --gap-soft: #FBF0E1;
+    --good: #2B7A3E;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12181F;
+      --surface: #1A2129;
+      --surface-2: #212A34;
+      --ink: #E4EAF0;
+      --muted: #93A2B1;
+      --line: #313C48;
+      --accent: #3BAFBF;
+      --accent-soft: #16323A;
+      --gap: #E0A458;
+      --gap-soft: #33270F;
+      --good: #6FBF82;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12181F;
+    --surface: #1A2129;
+    --surface-2: #212A34;
+    --ink: #E4EAF0;
+    --muted: #93A2B1;
+    --line: #313C48;
+    --accent: #3BAFBF;
+    --accent-soft: #16323A;
+    --gap: #E0A458;
+    --gap-soft: #33270F;
+    --good: #6FBF82;
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.6;
+    margin: 0;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 48px 24px 96px; }
+  header.doc { border-bottom: 2px solid var(--accent); padding-bottom: 28px; margin-bottom: 40px; }
+  .kicker {
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 12px;
+  }
+  h1 {
+    font-family: Archivo, "Segoe UI", sans-serif; font-weight: 700;
+    font-size: clamp(30px, 5vw, 42px); line-height: 1.12; margin: 0 0 10px;
+    text-wrap: balance;
+  }
+  .subtitle { color: var(--muted); font-size: 18px; max-width: 62ch; margin: 0 0 20px; }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 8px 28px;
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 12.5px; color: var(--muted);
+  }
+  .meta b { color: var(--ink); font-weight: 600; }
+  section { margin: 56px 0; }
+  .eyebrow {
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 6px;
+  }
+  h2 {
+    font-family: Archivo, "Segoe UI", sans-serif; font-weight: 700;
+    font-size: 27px; line-height: 1.2; margin: 0 0 16px; text-wrap: balance;
+  }
+  h3 {
+    font-family: Archivo, "Segoe UI", sans-serif; font-weight: 600;
+    font-size: 19px; margin: 30px 0 10px;
+  }
+  h4 { font-family: Archivo, sans-serif; font-weight: 600; font-size: 16px; margin: 22px 0 6px; }
+  p { margin: 0 0 14px; max-width: 72ch; }
+  ul, ol { margin: 0 0 14px; padding-left: 24px; }
+  li { margin-bottom: 6px; }
+  strong { font-weight: 600; }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; margin: 18px 0; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th {
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 11.5px;
+    letter-spacing: .08em; text-transform: uppercase; text-align: left;
+    color: var(--muted); background: var(--surface-2);
+    padding: 10px 14px; border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  .num { font-variant-numeric: tabular-nums; }
+  .tag {
+    display: inline-block; font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 11px; letter-spacing: .06em; padding: 2px 8px; border-radius: 4px;
+    background: var(--accent-soft); color: var(--accent); font-weight: 600;
+  }
+  .tag.gap { background: var(--gap-soft); color: var(--gap); }
+  .callout {
+    border-left: 3px solid var(--accent); background: var(--surface);
+    border-radius: 0 8px 8px 0; padding: 16px 20px; margin: 20px 0;
+  }
+  .callout.gapline { border-left-color: var(--gap); }
+  .callout p:last-child { margin-bottom: 0; }
+  .toolcard {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 20px 22px; margin: 18px 0;
+  }
+  .toolcard h3 { margin-top: 0; }
+  pre.mermaid { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; overflow-x: auto; }
+  .flownote { font-size: 15px; color: var(--muted); max-width: 76ch; }
+  code {
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 14px;
+    background: var(--surface-2); padding: 1px 6px; border-radius: 4px;
+  }
+  .phases { display: grid; gap: 12px; margin: 18px 0; }
+  .phase {
+    display: grid; grid-template-columns: 92px 1fr; gap: 16px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px;
+  }
+  .phase .pn {
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px;
+    color: var(--accent); font-weight: 600; letter-spacing: .08em; padding-top: 3px;
+  }
+  @media (max-width: 560px) { .phase { grid-template-columns: 1fr; gap: 4px; } }
+</style>
+
+<div class="wrap">
+<header class="doc">
+  <div class="kicker">Product Requirements Document · Draft v1.0</div>
+  <h1>TraceIQ — an AI-native tracing agent</h1>
+  <p class="subtitle">Competitive research across the top five distributed-tracing tools, the gaps they leave open, and the architecture of the bot that closes them.</p>
+  <div class="meta">
+    <span><b>Author</b> shakrath@gmail.com</span>
+    <span><b>Date</b> 2026-08-31</span>
+    <span><b>Status</b> Draft for review</span>
+  </div>
+</header>
+
+<section>
+  <div class="eyebrow">01 · Introduction</div>
+  <h2>Why build a tracing bot now</h2>
+  <p>Distributed tracing is the richest signal for diagnosing failures in microservice systems, yet in 2026 it remains the least automated pillar of observability. Research across current tool rankings and practitioner reports shows a consistent split: open-source tracing tools (Jaeger, Zipkin, Grafana Tempo) collect and display traces well but stop there — no alerting, no root-cause analysis, no natural-language access. Commercial platforms (Datadog APM, Dynatrace) automate analysis with AI, but at high and unpredictable cost, behind proprietary lock-in, and with sampling and retention limits that can discard the very traces needed during an incident.</p>
+  <p><strong>TraceIQ</strong> is an AI-native tracing agent that closes this gap. It is an OpenTelemetry-native bot sitting on an open, cost-efficient trace store, doing what engineers currently do manually: watch traces continuously, detect anomalies, run evidence-grounded root-cause investigations, correlate traces with logs and metrics, answer questions in natural language, and propose — with human approval — safe remediations. It brings Dynatrace-class RCA and Datadog-class agentic investigation to the open-source stack, without the bill shock or the lock-in.</p>
+</section>
+
+<section>
+  <div class="eyebrow">02 · List of tools compared</div>
+  <h2>The consensus top five</h2>
+  <p>Five tools appear most consistently at the top of 2025–2026 distributed-tracing rankings (SigNoz, Dash0, Middleware, Sematext, Uptrace, OpenObserve comparisons). SigNoz, New Relic, and Honeycomb also rank frequently; the five below were selected as consensus representatives of the OSS-tracing, OSS-scale, and commercial-AI segments.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Tool</th><th>Type</th><th>Maintainer</th><th>Core principle</th></tr>
+    <tr><td>Jaeger v2</td><td>Open source</td><td>CNCF community (ex-Uber)</td><td>All-in on OpenTelemetry — v2 is literally a distribution of the OTel Collector with Jaeger storage and query on top. Head, remote, and adaptive sampling; new native ClickHouse backend (v2.18, 2026).</td></tr>
+    <tr><td>Zipkin</td><td>Open source</td><td>OpenZipkin community (ex-Twitter, Dapper-based)</td><td>Simplicity and self-containment: one Java binary is collector, API, and UI. Battle-tested but low velocity; OTel deprecated its Zipkin exporters in Dec 2025.</td></tr>
+    <tr><td>Grafana Tempo 3.0</td><td>Open source</td><td>Grafana Labs</td><td>"Store everything, cheaply" — no sampling, no index; traces as Parquet blocks on commodity object storage, queried with TraceQL, deeply tied to the LGTM stack.</td></tr>
+    <tr><td>Datadog APM</td><td>Commercial SaaS</td><td>Datadog, Inc.</td><td>Unified observability platform: one agent, 20+ integrated products sharing tags across traces, logs, metrics, RUM. Agentic AI via Watchdog and Bits AI SRE (GA Dec 2025).</td></tr>
+    <tr><td>Dynatrace</td><td>Commercial SaaS</td><td>Dynatrace, Inc.</td><td>AI-first "answers, not dashboards": OneAgent auto-discovery, Smartscape live topology, PurePath code-level traces, Davis deterministic causal RCA plus Davis CoPilot on the Grail lakehouse.</td></tr>
+  </table></div>
+
+  <h3>Feature matrix</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Feature</th><th>Jaeger</th><th>Zipkin</th><th>Tempo</th><th>Datadog</th><th>Dynatrace</th></tr>
+    <tr><td>OTel-native ingest</td><td>Yes — is an OTel Collector</td><td>Yes (OTLP, 2025)</td><td>Yes, OTLP-first</td><td>Yes, converted internally</td><td>Yes (PurePath 4)</td></tr>
+    <tr><td>Sampling</td><td>Head + remote + adaptive</td><td>Client head-based only</td><td>None — store 100%</td><td>Head + retention filters</td><td>Near-lossless, adaptive</td></tr>
+    <tr><td>Storage</td><td>Cassandra / ES / ClickHouse</td><td>In-memory / Cassandra / ES / MySQL</td><td>Object storage (Parquet)</td><td>SaaS: 15-min live, 15-day indexed</td><td>Grail lakehouse, metered</td></tr>
+    <tr><td>Query language</td><td>Search filters only</td><td>Search filters only</td><td>TraceQL + metrics</td><td>Proprietary UI</td><td>DQL</td></tr>
+    <tr><td>Dependency graph</td><td>Built-in</td><td>Separate Spark batch job</td><td>Metrics-generator + Grafana</td><td>Service Map</td><td>Smartscape, real-time</td></tr>
+    <tr><td>Built-in alerting</td><td>No</td><td>No</td><td>No (via Prometheus)</td><td>Yes</td><td>Yes (Davis Problems)</td></tr>
+    <tr><td>Automated RCA</td><td>No — trace diff only</td><td>No</td><td>No</td><td>Watchdog + Bits AI SRE</td><td>Davis causal engine</td></tr>
+    <tr><td>AI / NL interface</td><td>No</td><td>No</td><td>Hooks only (MCP, LLM API)</td><td>Bits AI agents</td><td>Davis CoPilot / Assist</td></tr>
+    <tr><td>Log/metric correlation</td><td>No — traces only</td><td>No</td><td>Across LGTM stack</td><td>Unified tagging</td><td>Grail + Smartscape</td></tr>
+    <tr><td>Cost profile</td><td>Self-hosted infra ops</td><td>Self-hosted infra ops</td><td>Cheap storage, query compute</td><td class="num">$31–40/host/mo + overages</td><td class="num">~$58/host/mo, fully metered</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="eyebrow">03 · Gap / feature analysis</div>
+  <h2>Where each tool lags, and how TraceIQ improves it</h2>
+
+  <div class="toolcard">
+    <h3>Jaeger <span class="tag gap">4 gaps</span></h3>
+    <div class="tablewrap"><table>
+      <tr><th>Lagging feature</th><th>Evidence</th><th>TraceIQ improvement</th></tr>
+      <tr><td>No built-in alerting or anomaly detection</td><td>Cited as Jaeger's top gap in every comparison; alerting delegated to Prometheus/Grafana on spanmetrics.</td><td>Native anomaly-scored alerts from streaming RED baselines; every alert opens an automated investigation instead of just paging a human.</td></tr>
+      <tr><td>No automated RCA</td><td>Trace diff and critical-path highlighting only; engineers eyeball waterfalls.</td><td>LLM-driven hypothesis loop (form → test against real spans/logs/metrics → validate or discard) delivering ranked root causes with cited trace evidence.</td></tr>
+      <tr><td>Traces only — no log/metric correlation</td><td>Jaeger v2 stores and queries traces; logs and metrics live elsewhere.</td><td>Auto-joins traces to logs (trace_id injection) and metrics (exemplars) at investigation time into one evidence bundle.</td></tr>
+      <tr><td>Sampling blind spots</td><td>Head sampling can discard the anomalous trace; tail sampling via OTel Collector is operationally tricky.</td><td>Managed anomaly-aware tail sampling: 100% of error, slow, and rare-path traces retained automatically.</td></tr>
+    </table></div>
+  </div>
+
+  <div class="toolcard">
+    <h3>Zipkin <span class="tag gap">4 gaps</span></h3>
+    <div class="tablewrap"><table>
+      <tr><th>Lagging feature</th><th>Evidence</th><th>TraceIQ improvement</th></tr>
+      <tr><td>Feature-frozen, maintenance mode</td><td>Volunteer-maintained; OTel deprecated Zipkin exporters (Dec 2025); framed as legacy in 2026 rankings.</td><td>OTel-first by design; rides the ecosystem's momentum. Zipkin-format spans still accepted for migration.</td></tr>
+      <tr><td>Dependency graph needs external Spark batch job</td><td><code>zipkin-dependencies</code> cron pre-aggregates links; not real-time.</td><td>Live topology graph built incrementally from streaming spans — always current, used directly by RCA for blast-radius reasoning.</td></tr>
+      <tr><td>Client-side head sampling; volatile default storage</td><td>No remote/adaptive/tail sampling; in-memory default loses data on restart.</td><td>Centralized, adaptive, anomaly-aware sampling; durable object storage from day one.</td></tr>
+      <tr><td>No alerting, analytics, RCA, or AI</td><td>Basic search UI; same traces-only critique as Jaeger with less development.</td><td>Full TraceIQ intelligence layer applies.</td></tr>
+    </table></div>
+  </div>
+
+  <div class="toolcard">
+    <h3>Grafana Tempo <span class="tag gap">4 gaps</span></h3>
+    <div class="tablewrap"><table>
+      <tr><th>Lagging feature</th><th>Evidence</th><th>TraceIQ improvement</th></tr>
+      <tr><td>Slow attribute searches at scale</td><td>No-index design scans Parquet blocks; GitHub issues #2639, #4239, #5679, #7147 report slow attribute queries even at modest scale.</td><td>Lightweight semantic hot index (error signatures, RED rollups, topology edges) answers investigations fast; raw Parquet scanned only for evidence retrieval.</td></tr>
+      <tr><td>Grafana-dependent; no built-in alerting or RCA</td><td>Grafana is the UI; alerting delegated to Prometheus rules; no automated RCA in OSS.</td><td>Self-contained chat-first UI (Slack/Teams/web) plus API; also plugs into Grafana so existing dashboards keep working.</td></tr>
+      <tr><td>AI is hooks-only</td><td>Tempo 2.9/2.10 ship an MCP server and LLM-friendly APIs but no reasoning — bring your own agent.</td><td>TraceIQ <em>is</em> the agent: reasoning loop, runbook memory, guarded remediation. It can consume Tempo's MCP server, making Tempo a supported backend rather than a competitor.</td></tr>
+      <tr><td>"Store everything" shifts cost to query-time compute</td><td>Massive scan volumes at query time are not free; high-cardinality metrics-generator pain.</td><td>Anomaly-aware retention tiers plus the hot index cut both storage and scan cost.</td></tr>
+    </table></div>
+  </div>
+
+  <div class="toolcard">
+    <h3>Datadog APM <span class="tag gap">5 gaps</span></h3>
+    <div class="tablewrap"><table>
+      <tr><th>Lagging feature</th><th>Evidence</th><th>TraceIQ improvement</th></tr>
+      <tr><td>Cost unpredictability / bill shock</td><td>#1 complaint even in positive reviews: $31–40/host/mo plus $0.10/GB ingested and $1.70–2.50/M indexed spans; first bills reported 5–10× expectations.</td><td>Open-core, self-hostable on commodity object storage; costs are infrastructure-linear. No per-span, per-SKU, or per-seat metering; LLM spend budget-capped per investigation.</td></tr>
+      <tr><td>Retention limits</td><td>15-minute live search, 15-day indexed; unsampled or older traces are gone unless you pay to index.</td><td>100% of anomalous traces kept on cheap object storage with configurable long retention — the interesting tail is what the sampler is designed never to drop.</td></tr>
+      <tr><td>Vendor lock-in</td><td>Proprietary agent, tag conventions, dashboards; OTel semantic conventions lossy in translation; migration pain widely cited.</td><td>Native OTLP stored with OTel conventions untouched; portable Parquet — leave anytime with your data.</td></tr>
+      <tr><td>Alert noise out of the box</td><td>Default monitors generate many non-actionable alerts without significant tuning.</td><td>Anomalies open <em>investigations</em>; only investigations that survive evidence validation page a human.</td></tr>
+      <tr><td>Agentic AI tied to the paid platform</td><td>Bits AI SRE is strong but only on Datadog's platform; Datadog's own blog documented silent eval-quality regressions.</td><td>Same hypothesis-loop pattern on the open stack, with transparent replayable investigation logs and a published, re-runnable eval harness.</td></tr>
+    </table></div>
+  </div>
+
+  <div class="toolcard">
+    <h3>Dynatrace <span class="tag gap">4 gaps</span></h3>
+    <div class="tablewrap"><table>
+      <tr><th>Lagging feature</th><th>Evidence</th><th>TraceIQ improvement</th></tr>
+      <tr><td>Black-box AI</td><td>Davis RCA is opaque — users can't see or tune why it decided something; Davis CoPilot answers get mixed reviews.</td><td>Every hypothesis, query, evidence item, and reasoning step is logged and replayable; engineers correct a step and re-run, and the correction becomes feedback memory.</td></tr>
+      <tr><td>Cost and enterprise-only accessibility</td><td class="num">~$58/host/mo full-stack; DPS meters ingest, retention, and queries; renewal shock.</td><td>Open core runs on a single node for small teams and scales out; no metering on your own queries.</td></tr>
+      <tr><td>Steep learning curve</td><td>DQL, Smartscape, and the Gen-3 UI require real training investment.</td><td>Natural language is the primary interface — "why is checkout slow since the 2pm deploy?" — with TraceQL/SQL power access for experts.</td></tr>
+      <tr><td>Analytical value doesn't export</td><td>Despite OTel ingestion, Davis/Smartscape/Grail intelligence is proprietary; switching costs high.</td><td>Topology graph, investigation reports, and runbook memory are exportable JSON/Markdown artifacts owned by the customer.</td></tr>
+    </table></div>
+  </div>
+
+  <div class="callout gapline">
+    <h4 style="margin-top:0">Cross-cutting gaps no compared tool solves</h4>
+    <ul>
+      <li><strong>Sampling loses the traces that matter</strong> — head sampling at 0.1–2% discards the rare anomalous request. TraceIQ: managed anomaly-aware tail sampling as a core feature.</li>
+      <li><strong>RCA is manual on OSS, black-box or expensive on commercial.</strong> TraceIQ: transparent, evidence-grounded, replayable agentic RCA on the open stack.</li>
+      <li><strong>No natural-language tracing UX on the open-source stack.</strong> TraceIQ: chat-first interface over open trace data.</li>
+      <li><strong>Remediation stops at suggestion</strong> — AI SRE tools remain copilots with no guardrail standards. TraceIQ: read-only default, scoped action allowlists, human approval gates, per-incident action budgets.</li>
+      <li><strong>AI agents are bounded by telemetry quality</strong> — an agent cannot reason over a trace that was sampled away. TraceIQ co-designs the sampler and the agent: the agent tells the sampler what "interesting" looks like.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">04 · High level diagram</div>
+  <h2>TraceIQ at a glance</h2>
+  <pre class="mermaid">
+flowchart TB
+    subgraph Apps["Instrumented services — OTel SDKs / Istio mesh / eBPF"]
+        A1[Service A] & A2[Service B] & A3[Service C]
+    end
+    subgraph Ingest["Ingest layer"]
+        OC["OTel Collector fleet<br/>OTLP · Jaeger · Zipkin formats"]
+        SAM["Anomaly-aware tail sampler<br/>keep 100% errors/slow/rare · downsample healthy"]
+    end
+    subgraph Store["Open storage layer"]
+        OBJ[("Object storage<br/>Parquet trace blocks")]
+        IDX[("Semantic hot index<br/>ClickHouse: signatures, RED, topology")]
+        LOG[("Logs — Loki/ES")]
+        MET[("Metrics — Prometheus/Mimir")]
+    end
+    subgraph Brain["TraceIQ intelligence layer"]
+        DET["Anomaly detector<br/>streaming RED baselines"]
+        TOPO["Live topology graph"]
+        RCA["Agentic RCA engine<br/>hypothesis → test → validate<br/>transparent + replayable"]
+        MEM["Investigation & runbook memory"]
+        REM["Guarded remediation<br/>read-only default · approval gates"]
+    end
+    subgraph Face["Interfaces"]
+        CHAT["NL chat: Slack / Teams / Web"]
+        GRAF["Grafana plugin / API / MCP"]
+        PAGE["PagerDuty / OpsGenie"]
+    end
+    Apps --> OC --> SAM
+    SAM --> OBJ & IDX
+    IDX --> DET --> RCA
+    RCA <--> OBJ & LOG & MET & TOPO & MEM
+    RCA --> REM
+    RCA --> CHAT & PAGE
+    TOPO --> GRAF
+    RCA -. "what 'interesting' looks like" .-> SAM
+  </pre>
+  <p class="flownote">OTel-instrumented services emit spans to a collector fleet. The anomaly-aware sampler retains all interesting traces and downsamples healthy ones into cheap object storage, while a small ClickHouse hot index carries error signatures, RED metrics, and topology edges. The anomaly detector watches the index; when something deviates, the agentic RCA engine investigates — pulling traces, correlated logs, and metrics as evidence — then reports via chat and paging, optionally proposing a guarded remediation. Outcomes feed back into memory and into the sampler's definition of "interesting."</p>
+</section>
+
+<section>
+  <div class="eyebrow">05 · Detailed low level architecture</div>
+  <h2>Tier-by-tier specification</h2>
+
+  <h3>1 — Ingest &amp; sampling tier</h3>
+  <ul>
+    <li><strong>Protocols:</strong> OTLP gRPC (4317) and HTTP (4318) first-class; Jaeger Thrift/gRPC and Zipkin v2 JSON accepted for migration. Built as an OTel Collector distribution (the Jaeger v2 pattern) to reuse the receiver/processor ecosystem.</li>
+    <li><strong>Anomaly-aware tail sampler (the differentiator):</strong> spans buffered per trace-ID in a consistent-hash ring so complete traces assemble on one shard; Kafka/Redpanda as the buffering substrate (the decoupling pattern Tempo 3.0 adopted). Per completed trace: <strong>keep 100%</strong> if error status, latency above p99 baseline, rare path signature, or match on an active-investigation predicate pushed down by the RCA engine; otherwise downsample to a configurable floor (default 1%), with per-service RED metrics always extracted before discard.</li>
+    <li><strong>Path signatures:</strong> hash of ordered (service, operation) edges; a signature unseen for N days is rare and kept.</li>
+    <li><strong>Budget:</strong> sampling decision within 30 s of trace completion; zero latency added to the request path.</li>
+  </ul>
+
+  <h3>2 — Storage tier</h3>
+  <ul>
+    <li><strong>Cold store:</strong> Parquet trace blocks on object storage (columnar, zstd). Default retention 30 d anomalous / 7 d healthy-sample, per-tenant configurable. Open format — exportable, DuckDB/Athena-queryable.</li>
+    <li><strong>Hot index (ClickHouse):</strong> span rollups, error signatures (exception type + stack fingerprint), topology edge table at 10 s resolution, exemplar trace-IDs per histogram bucket. Sized at 2–5% of raw span volume (Jaeger v2.18's ClickHouse move showed 8.6× compression on 10 M spans).</li>
+    <li><strong>Correlation contract:</strong> trace_id injected into logs, exemplars attached to metrics, W3C traceparent canonical with B3 accepted.</li>
+  </ul>
+
+  <h3>3 — Anomaly detection tier</h3>
+  <ul>
+    <li>Streaming baselines per (service, operation): latency quantiles (t-digest), error rate (EWMA), throughput — seasonally adjusted.</li>
+    <li>Detectors: latency shift, error burst, new error signature, topology change, and deploy-marker correlation (ArgoCD/Flux/GitHub webhooks tag spans with version).</li>
+    <li>Output is an <strong>anomaly event, not an alert</strong>: events are deduplicated by topology proximity into incident candidates — the anti-alert-fatigue layer.</li>
+  </ul>
+
+  <h3>4 — Agentic RCA engine (the core)</h3>
+  <ol>
+    <li><strong>Contextualize:</strong> pull topology neighborhood, recent deploys, active anomalies, and similar past investigations from memory.</li>
+    <li><strong>Hypothesize:</strong> the LLM generates ranked hypotheses ("v2 deploy of payment-svc introduced N+1 DB calls").</li>
+    <li><strong>Test:</strong> each hypothesis compiles to concrete queries — structural trace queries, index queries, log searches, PromQL — executed as tool calls against real data. No hypothesis survives without evidence.</li>
+    <li><strong>Validate / iterate:</strong> confirming evidence promotes; contradicting evidence discards; loop until confidence threshold or budget exhaustion.</li>
+    <li><strong>Report:</strong> root-cause narrative, cited evidence (trace-IDs, log lines, metric charts), blast radius from topology, suggested remediation.</li>
+  </ol>
+  <div class="callout">
+    <p><strong>Transparency contract:</strong> every step is persisted as a replayable investigation log. An engineer can mark any step wrong; the correction becomes retrieval-weighted memory. <strong>Budgets:</strong> per-investigation token, time, and query caps (default 5 min). <strong>Models:</strong> pluggable LLM backend (Claude API default; local model for air-gapped) using structured tool-calling only — the model never sees raw span dumps. <strong>Evals:</strong> ships with an SREBench-style fault-injection suite; accuracy numbers are published and customer-re-runnable.</p>
+  </div>
+
+  <h3>5 — Memory &amp; learning tier</h3>
+  <p>Vector plus structured store of past investigations (symptom fingerprint → confirmed root cause), imported runbooks, engineer corrections, and service metadata (owners, SLOs, escalation). Retrieved at the contextualize step; nightly consolidation prunes stale entries.</p>
+
+  <h3>6 — Guarded remediation tier</h3>
+  <ul>
+    <li><strong>Default read-only.</strong> An action requires: the action type on the tenant allowlist (rollback, scale, restart, feature-flag toggle), explicit human approval in chat, and a per-incident action budget (max N actions, then mandatory human takeover).</li>
+    <li>Every action: pre-state snapshot, execution through existing operators (ArgoCD rollback, scoped ServiceAccount), post-verification that the anomaly cleared, auto-report. Immutable audit log; scope violations self-reported as incidents.</li>
+  </ul>
+
+  <h3>7 — Interface tier</h3>
+  <p>Chat-first Slack/Teams bot and web UI (natural language → investigation, trace query, topology question, or status, with rendered mini-waterfalls and evidence links). Grafana datasource plugin, REST/gRPC API, and an MCP server so other agents can query TraceIQ — while TraceIQ can consume Tempo's MCP server as a backend. Pages route to PagerDuty/OpsGenie <em>with the RCA draft attached</em>, not before it.</p>
+
+  <h3>8 — Deployment model</h3>
+  <p>Single-binary dev mode (embedded ClickHouse, local disk) growing into a Helm chart for production (collector DaemonSet, sampler StatefulSet, Kafka, ClickHouse cluster, brain deployment, external object storage). Multi-tenant with per-tenant retention, sampling, and allowlist policy. Works out of the box on Istio service-mesh telemetry.</p>
+
+  <h3>Technology stack</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Component</th><th>Technology</th><th>Rationale</th></tr>
+    <tr><td>Ingest</td><td>OTel Collector distro (Go)</td><td>Ecosystem reuse; Jaeger v2 precedent</td></tr>
+    <tr><td>Buffer</td><td>Kafka / Redpanda</td><td>Tail-sampling assembly and replay; Tempo 3.0 precedent</td></tr>
+    <tr><td>Cold store</td><td>Parquet on S3/GCS/Azure</td><td>Tempo-proven economics; open format</td></tr>
+    <tr><td>Hot index</td><td>ClickHouse</td><td>Jaeger v2.18 precedent, 8.6× compression</td></tr>
+    <tr><td>Brain</td><td>Go/Python services + pluggable LLM</td><td>Structured tool-calling agent loop; Claude API default</td></tr>
+    <tr><td>Memory</td><td>Postgres + pgvector</td><td>Simple, portable</td></tr>
+    <tr><td>UI</td><td>React web + Slack/Teams bots + Grafana plugin</td><td>Meet engineers where they are</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="eyebrow">06 · Competitive position</div>
+  <h2>How TraceIQ beats each compared tool</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Versus</th><th>Their position</th><th>TraceIQ advantage</th></tr>
+    <tr><td>Jaeger</td><td>Best pure-OSS trace collection and viewing; no alerting, RCA, or correlation.</td><td>Adds the entire intelligence layer while staying equally OTel-native — Jaeger users adopt TraceIQ without re-instrumenting anything.</td></tr>
+    <tr><td>Zipkin</td><td>Legacy simplicity; feature-frozen, batch dependency graphs.</td><td>Same single-binary onboarding simplicity, but with live topology, durable storage, and a full AI layer — a genuine successor path with Zipkin-format ingest.</td></tr>
+    <tr><td>Tempo</td><td>Cheapest storage of 100% of traces; slow attribute search, BYO-agent hooks.</td><td>Keeps Tempo's storage economics but fixes query speed with the semantic hot index and ships the agent Tempo only exposes hooks for. Can run on top of Tempo as a backend.</td></tr>
+    <tr><td>Datadog APM</td><td>Best-in-class unified platform plus Bits AI SRE; bill shock, 15-day retention, lock-in.</td><td>Bits-AI-style hypothesis-loop investigation on an open, self-hosted stack: predictable infra-linear cost, data you own, long retention of exactly the anomalous traces Datadog's sampling and windows can lose.</td></tr>
+    <tr><td>Dynatrace</td><td>Deepest auto-instrumentation plus deterministic Davis RCA; expensive, black-box, steep learning curve.</td><td>Transparent, replayable RCA where Davis is opaque — every step inspectable and correctable, corrections make the bot smarter. NL-first UX removes the DQL learning curve; intelligence is exportable.</td></tr>
+  </table></div>
+  <div class="callout">
+    <p><strong>The unique wedge:</strong> TraceIQ co-designs the sampler and the AI agent. Commercial AI reasons over whatever the platform retained; OSS tools retain without reasoning. TraceIQ's agent pushes "what interesting looks like" down into the sampling tier, so the traces needed for tomorrow's investigation are, by construction, the ones kept today — closing the loop every 2025–2026 pain-point survey identifies as the field's core unsolved problem.</p>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">07 · ROI</div>
+  <h2>Return on investment</h2>
+  <p>Reference team: 50 microservices, ~200 hosts, 5 on-call engineers, 8 significant incidents/month, blended engineer cost $75/hr.</p>
+  <h3>Annual cost avoidance vs. commercial platforms</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Item</th><th>Datadog APM</th><th>Dynatrace</th><th>TraceIQ self-hosted</th></tr>
+    <tr><td>Platform / license (200 hosts)</td><td class="num">~$74–96k</td><td class="num">~$139k</td><td class="num">$0 (open core)</td></tr>
+    <tr><td>Span ingest / index overages</td><td class="num">+$20–60k, unpredictable</td><td>Included but query-metered</td><td class="num">$0</td></tr>
+    <tr><td>Infra (object storage, ClickHouse, Kafka)</td><td>—</td><td>—</td><td class="num">~$25–40k</td></tr>
+    <tr><td>LLM API spend (budget-capped)</td><td>—</td><td>—</td><td class="num">~$6–12k</td></tr>
+    <tr><td>Total annual</td><td class="num"><strong>~$95–155k</strong></td><td class="num"><strong>~$140k+</strong></td><td class="num"><strong>~$31–52k</strong></td></tr>
+  </table></div>
+  <p><strong>Direct savings: roughly $60–110k/year</strong> at this scale — and the gap widens super-linearly with host count, since commercial pricing scales per host and per span while TraceIQ scales with infrastructure only.</p>
+  <h3>MTTR reduction</h3>
+  <ul>
+    <li>Industry data: automatic trace-log-metric correlation alone yields ~70% faster RCA; agentic investigation turns 30–60 min of manual triage into 3–4 min of machine investigation.</li>
+    <li>Conservative claim: <strong>MTTR −50%</strong>. At 8 incidents/month × 90 engineer-minutes × 3 engineers: ~18 hrs/month saved ≈ $16k/year in engineer time — plus avoided downtime, which at even $5k/hr of degraded revenue ≈ $360k/year at a 50% reduction of 12 hrs/yr degradation.</li>
+  </ul>
+  <h3>Soft ROI</h3>
+  <ul>
+    <li><strong>Alert-fatigue reduction:</strong> investigation-gated paging cuts non-actionable pages; retains on-call sanity.</li>
+    <li><strong>No-lock-in insurance:</strong> open Parquet + OTLP means zero future migration cost; commercial migrations routinely consume engineer-quarters.</li>
+    <li><strong>Learning flywheel:</strong> every corrected investigation improves the memory — ROI compounds, and the learning belongs to you, not the vendor.</li>
+  </ul>
+  <p><strong>Payback:</strong> with ~1 engineer-quarter of deployment effort (~$45k), payback lands under 6 months against either commercial alternative.</p>
+</section>
+
+<section>
+  <div class="eyebrow">08 · Conclusion</div>
+  <h2>The empty intersection</h2>
+  <p>The 2026 tracing landscape splits cleanly: open-source tools that collect traces economically but leave alerting, correlation, and root-cause analysis to humans — and commercial platforms that automate the analysis but charge unpredictably, cap retention, obscure their AI's reasoning, and lock the intelligence in. The new wave of AI SRE agents proves demand for automated investigation but sits atop those same proprietary platforms and stops short of trusted remediation.</p>
+  <p>TraceIQ occupies the empty intersection: <strong>an OpenTelemetry-native tracing bot that owns the full loop — anomaly-aware collection, cheap open storage, transparent evidence-grounded agentic RCA, natural-language access, and guarded remediation — on infrastructure you control at infrastructure prices.</strong> Its defining innovation is closing the loop between the agent and the sampler, guaranteeing the traces that matter are the traces that exist when the investigation starts.</p>
+  <div class="phases">
+    <div class="phase"><div class="pn">PHASE 1</div><div>MVP (~1 quarter): OTLP ingest, anomaly-aware tail sampler, Parquet/ClickHouse store, anomaly detection, Slack natural-language query bot.</div></div>
+    <div class="phase"><div class="pn">PHASE 2</div><div>Agentic RCA loop with replayable investigations, trace-log-metric correlation, Grafana plugin.</div></div>
+    <div class="phase"><div class="pn">PHASE 3</div><div>Guarded remediation, runbook memory and learning, published eval harness.</div></div>
+    <div class="phase"><div class="pn">VALIDATE</div><div>Run Phases 1–2 against the existing Istio transaction-lab failure catalog (S01–S23) as the internal SREBench.</div></div>
+  </div>
+</section>
+</div>
