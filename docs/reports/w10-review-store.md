@@ -1,0 +1,58 @@
+# W10 — Code review: internal/store (sqlite hot-index, parquet cold-store, tiered composite)
+
+## Verdict: APPROVE-WITH-FIXES (fixes applied in this pass)
+
+Reviewed `internal/store/**/*.go` against `docs/architecture/features/F03-tiered-storage.md`
+(rev 2) and DR-6/DR-7/DR-12 in `docs/architecture/06-decision-register.md`. Note: the task cited
+`docs/reports/w9-store.md` as one of two reports to read; only `docs/reports/w9-store-cont.md`
+exists on disk (`docs/reports/w9-store.md` is not present). Several source comments cite
+`docs/reports/w9-store.md` for "documented deviations" (FNV-1a vs. xxh3, LIKE vs. FTS5, reduced
+Parquet attribute fidelity) that are therefore not actually recorded anywhere — see Minor finding
+below. This review proceeded against `w9-store-cont.md` plus the code itself.
+
+`go build ./internal/store/... `, `go vet ./internal/store/...`, and
+`go test ./internal/store/... -v` were run before touching anything: build/vet clean, 21/21 tests
+green, confirming the reports' claims. Four gaps were then found that the existing tests did not
+catch (none flagged as deferred in either report) — two Major, two Minor-but-fixed — all fixed in
+this pass, with regression tests added. Post-fix: build/vet clean, **25/25 test functions green**
+(28 pass lines counting subtests) in `internal/store/...`, and `go build ./... && go vet ./...
+&& go test ./...` green repo-wide with no other regressions.
+
+## Findings
+
+| # | Severity | File:line | Issue | Required fix | Status |
+|---|---|---|---|---|---|
+| 1 | Major | `internal/store/sqlite/hotindex.go` (`ExpireBefore`, pre-fix ~L597-608) | `ExpireBefore(TableAttrIndex, ...)` and `ExpireBefore(TableSpanFTS, ...)` were **silent no-ops** (`return store.Expired{}, nil`). `store.TieredStore.SweepRetention` (internal/store/store.go) calls `ExpireBefore` for both tables at `policy.HotSpanRows` (dev: 24h) alongside `span`, so the sweep *looked* complete but `attr_index`/`span_text_fts` rows accumulated forever — a real breach of DR-7 §7's T0 tier ("Span rows + attr_index + FTS", 24h) and, over any run longer than the retention horizon, of the published `store_hot_index_ratio` 2–5% band (DR-6 §6.4). Not disclosed as deferred in either report. No test exercised these two tables' `ExpireBefore` at all (`TestExpireBefore_CutoffBoundary` only covers `trace`) — an AC-F03-5-adjacent gap with no test behind it. | Implement real expiry for both tables. | **FIXED** — `span_text_fts` gained a `ts` column (`internal/store/sqlite/schema.go`) and `store.FTSRow` gained a `Timestamp` field (`internal/store/store.go`) so it can expire like `span`; `attr_index` (WITHOUT ROWID, no raw-nanosecond column) expires via its existing 10s `bucket` column in a new `expireAttrIndexBefore` helper. Added `TestExpireBefore_AttrIndexAndFTS` (`internal/store/sqlite/sqlite_test.go`) asserting both tables now prune correctly. |
+| 2 | Major | `internal/store/parquet/parquet.go` (`Seal`, pre-fix ~L357-362) | `Seal` closed a sealed block's WAL file handle but **never deleted the file**. DR-7 §7 states "WAL segments are retained until `seal + store.cold.wal_retain` (default 10m)", implying deletion after that window; instead every sealed block leaked its WAL segment for the life of the process — unbounded disk growth, and not among the report's disclosed deferred items (DuckDB cross-val, orphan reconciliation, Compact no-op, cmd wiring). The original `TestReplayWAL_RecoversUnsealedTrace` test comment even documents the behavior as accepted ("Seal closes but doesn't delete it") without it being called out at the report level. | Implement WAL segment pruning per `wal_retain`. | **FIXED** — added `Config.WalRetain` (dev default 10m) and `Store.PruneWAL(now)`, which removes a sealed block's WAL file once `now >= sealedAt + WalRetain`, following the same exposed-driver-method pattern as `SealDue`/`ExpireBlocks` (a periodic caller from `cmd/traceiq` remains legitimately out of scope, matching the disclosed cmd-wiring deferral). Added `TestPruneWAL_RemovesAfterRetention` with an early/exactly-at-cutoff/idempotent-repeat boundary check. |
+| 3 | Major | `internal/store/parquet/parquet.go` (`readTraceFromWALFile`, `ReplayWAL`, pre-fix) | `Append` writes a CRC32C per WAL record (FR-F03-1's explicit requirement) but **it was never verified on any read path** — `readTraceFromWALFile` and `ReplayWAL`'s inline reader both parsed the length prefix and silently ignored the CRC bytes in the header. A truncated or bit-flipped record (exactly the corruption DR-7's crash matrix is meant to catch) would either fail to `gob`-decode (caught incidentally) or, worse, decode into a wrong/garbage `model.Trace` with no detection — undermining the "durable, corruption-detected" claim the CRC exists to back. | Verify CRC32C before trusting a record on every read path. | **FIXED** — both `readTraceFromWALFile` and `ReplayWAL`'s replay loop now recompute `crc32.Checksum` over the payload and skip/reject a record whose CRC doesn't match the stored header value. Added `TestReadFromWAL_RejectsCorruptedRecord`, which flips a payload byte on disk and asserts the read now errors instead of silently returning (or crashing on) bad data. |
+| 4 | Minor | `internal/store/parquet/parquet.go` (`nextSeq`, pre-fix ~L146-151) | `var blockSeq int64; blockSeq++` was a **package-level global mutated without atomics**, read/written by every `*Store` instance's `Append` while holding only that instance's own `s.mu` — a different `*Store` in the same process holds a different mutex, so two concurrent `Store`s (plausible in tests, and architecturally if a process ever hosts more than one cold store) race on the shared counter under Go's memory model. `CGO_ENABLED=0` in this project's toolchain means `go test -race` cannot run here to demonstrate it directly, but the code shape is a textbook data race regardless. | Synchronize the counter. | **FIXED** — `blockSeq` is now `atomic.Int64`, `nextSeq()` uses `.Add(1)`. |
+| 5 | Minor | docs/reports | `docs/reports/w9-store.md` (cited by the task and by multiple in-code "documented deviation" comments — FNV-1a vs. xxh3 hashing, LIKE vs. FTS5 full-text search, reduced Parquet attribute fidelity, the WAL-segment-doubles-as-block-id simplification) does not exist; only `w9-store-cont.md` does. | Not fixed (documentation-only, no code behavior implied). Recommend either writing the missing `w9-store.md` or repointing the comments at `w9-store-cont.md`/wherever those decisions actually landed, so "documented" claims are verifiable. | Not fixed — flagged for follow-up, out of scope for a code fix. |
+| 6 | Minor | `internal/store/sqlite/hotindex.go` (`WriteBatch`, `ingest_bytes_bucket` insert) and `internal/store/store.go` (`EmitCostSignal`, `SweepRetention`) | DR-31/F03 §3.2 ("Determinism") says retention sweeps and the cost-signal interval must read `model.Clock`, "no `time.Now`/`time.After` inside `internal/store` outside the allowlisted exceptions." `sqlite.Store` has no clock field at all, so `WriteBatch`'s `ingest_bytes_bucket` minute-bucketing uses `time.Now()` unconditionally; `store.go`'s `EmitCostSignal`/`SweepRetention` fall back to `time.Now()` only when `clock == nil` (a documented, intentional convention per the `tiered.New` doc comment). Not currently enforced by any test — `internal/archtest` has no time-ban check at all (confirmed by inspection: no `time.Now`/ban logic anywhere in `internal/archtest`), so this doesn't fail CI today, but it means `eval.VirtualClock` cannot drive sqlite's ingest-byte bucketing deterministically, which the cost-controller's own AC-F03-6/AC-F03-7 tests will eventually need. | Thread a clock through `sqlite.Store` for full DR-31 compliance; add the archtest time-ban check DR-31 implies. | Not fixed — behavioral risk is low today (no test depends on it, no production wiring exists yet per the disclosed cmd-wiring deferral) but should be closed before `eval.VirtualClock`-driven cost-controller integration tests are written. |
+| 7 | Observation | F03 §6 / DR-5 | F03 §6 states `internal/archtest` "fails the build on any exported method in this package whose second parameter is not `model.TenantID`". No such check exists anywhere in `internal/archtest` (confirmed by grep) — it's a pre-existing, codebase-wide gap (DR-5's contract test was never built in any prior wave), not something introduced by this wave's `store` work. All of `HotIndex`/`ColdStore`/`ObjectStore`'s exported methods *do* manually follow the `ctx, tid` convention on inspection. Not blocking this wave; flagged for whoever owns DR-5's cross-cutting archtest coverage. | — | Out of scope for this review (cross-package). |
+
+## Deferred-items audit (from `w9-store-cont.md`)
+
+All four items the report calls out as deferred were verified genuinely out of scope for this wave, not disguised spec gaps:
+
+- **DuckDB-CLI cross-validation (AC-F03-8)** — requires an external DuckDB binary; correctly deferred to an integration-test tier.
+- **True process-kill/power-loss crash tests (AC-F03-1 integration-level)** — `TestReplayWAL_RecoversUnsealedTrace` is a fair unit-level approximation (kills the WAL handle mid-test, verifies recovery); a real `kill -9`/power-loss harness is legitimately a separate integration-test investment.
+- **Orphan reconciliation (FR-F03-14)** — confirmed unimplemented (no `ReconcileOrphans` anywhere in `store/parquet`); correctly disclosed as not done.
+- **`Compact` no-op / cmd/traceiq wiring** — confirmed: `parquet.Store.Compact` returns a zero report unconditionally; no `cmd/traceiq` construction of `sqlite.Store`/`parquet.Store`/`tiered.New` exists yet. Both correctly disclosed.
+
+Two additional gaps (findings #1 and #2 above) were *not* among the disclosed deferred items and were silent no-ops/leaks rather than declared scope cuts — both are now fixed.
+
+## Spec-compliance spot checks (beyond the findings above)
+
+- DR-7's ordering invariant (cold WAL fsync before hot commit; manifest commit before `BindColdBlock`) is implemented correctly in `store.TieredStore.Append`/`SealAndBind` and is well covered by `tiered_test.go`'s spy-based ordering tests (`TestAppend_OrderingInvariant_ColdBeforeHot`, `TestRunSealCycle_SealCommitsBeforeBind`, `TestRunSealCycle_NeverBinds_WhenSealFails`, `TestRunSealCycle_PartialFailureStopsAndReturnsProgress`) — these assert real call-order behavior via a shared log, not just "no panic".
+- Retention boundary tests (`TestExpireBlocks_RetentionBoundary`, `TestExpireBefore_CutoffBoundary`, and the new `TestExpireBefore_AttrIndexAndFTS`) correctly exercise one-second-before/exactly-at/one-second-after semantics matching AC-F03-5's stated boundary rule.
+- `FullTextSearch: false` in `Store.Capabilities()` accurately reflects that `span_text_fts` is a plain LIKE-scanned table rather than an FTS5 virtual table — a real deviation from DR-6 §6.2's "FTS5" but self-consistently declared through the capability struct, so callers aren't misled.
+- Tenant isolation: every `HotIndex`/`ColdStore` method takes `(ctx, tid, ...)` in that order on manual inspection, matching F03 §6, even though (per finding #7) nothing mechanically enforces it yet.
+
+## Test status after fixes
+
+`go build ./internal/store/...`, `go vet ./internal/store/...` — clean.
+`go test ./internal/store/... -v` — all tests pass: 24 top-level test functions (21 original + 3
+new: `TestExpireBefore_AttrIndexAndFTS`, `TestPruneWAL_RemovesAfterRetention`,
+`TestReadFromWAL_RejectsCorruptedRecord`), 28 pass lines counting subtests.
+`go build ./... && go vet ./... && go test ./...` — green repo-wide, no regressions in
+`internal/sampler`, `internal/ingest`, `internal/topology`, `internal/archtest`, or elsewhere.

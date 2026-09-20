@@ -1,0 +1,22 @@
+id: S02-downstream-latency-propagation
+title: Checkout latency is explained by a slow downstream payments call
+description: >
+  Synthetic fixture for the downstream-latency-propagation rule
+  (internal/rca/rules): checkout's POST /pay span spends 96% of its total
+  duration in a downstream payments child span, above the rule's 80%
+  threshold.
+tenant: eval-tenant
+fixture:
+  path: ../fixtures/downstream_latency.json
+clock:
+  start: 2026-01-01T11:55:00Z
+  fault_at: 2026-01-01T12:05:00Z
+  end: 2026-01-01T12:35:00Z
+expect:
+  incident_within: 5m
+  epicenter_service: checkout
+  root_cause_category: dependency_failure
+  root_cause_component: checkout
+  expected_evidence: []
+  max_cost_micro_usd: 500000
+  must_not_page: false

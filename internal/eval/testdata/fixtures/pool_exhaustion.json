@@ -1,0 +1,7 @@
+[
+  {
+    "service": "orders",
+    "pool_wait_trend_up": true,
+    "exhaustion_log_matches": 4
+  }
+]

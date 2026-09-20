@@ -1,0 +1,17 @@
+# build artefacts
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+# local data (dev mode)
+/data/
+*.db
+*.db-wal
+*.db-shm
+# agent scratch
+/.tmp-depcheck/
+/.superpowers/
+# editors
+.vscode/
+.idea/

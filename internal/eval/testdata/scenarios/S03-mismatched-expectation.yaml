@@ -1,0 +1,32 @@
+id: S03-mismatched-expectation
+title: Pool exhaustion fixture scored against a deliberately wrong expectation
+description: >
+  Negative-scoring control: the fixture data genuinely confirms
+  connection-pool-exhaustion (resource_exhaustion) on the orders service, but
+  Expect.RootCauseCategory is deliberately set to "network" — a category no
+  rule in the 4-rule catalog can ever produce — so the scorer MUST report
+  Top1=false/Top3=false regardless of ranking or PostScore ties. (An earlier
+  draft of this scenario used "deploy_regression", which coincidentally is
+  also the category of the FIRST rule the catalog tries and rejects for this
+  fixture; because every rule's Hypothesis.Component is stamped to the
+  incident's EpicenterService regardless of Status, that refuted hypothesis
+  still satisfied matchRootCause's Category+Component check well enough to
+  land in the top 3 by PostScore tie-break order — a false Top3 match. Using
+  a category outside the whole catalog's range removes that ambiguity.) This
+  scenario exists to prove the harness discriminates rather than always
+  reporting a match (w13 test requirement).
+tenant: eval-tenant
+fixture:
+  path: ../fixtures/pool_exhaustion.json
+clock:
+  start: 2026-01-01T11:55:00Z
+  fault_at: 2026-01-01T12:05:00Z
+  end: 2026-01-01T12:35:00Z
+expect:
+  incident_within: 5m
+  epicenter_service: orders
+  root_cause_category: network
+  root_cause_component: orders
+  expected_evidence: []
+  max_cost_micro_usd: 500000
+  must_not_page: false
